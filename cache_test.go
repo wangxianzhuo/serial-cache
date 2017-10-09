@@ -25,3 +25,14 @@ func Test_Cache(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 	}
 }
+
+func Test_Close(t *testing.T) {
+	recvChan := make(chan []byte)
+	c := NewCache(4096, 500, recvChan)
+	c.Close()
+	c.Close()
+	err := c.Add([]byte{})
+	if err != nil {
+		t.Logf("%v", err)
+	}
+}

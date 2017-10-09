@@ -16,6 +16,7 @@ type Cache struct {
 	ReceiveChan   chan []byte
 	Quit          chan bool
 	Mux           sync.Mutex
+	IsClosed      bool
 }
 
 // NewCache create a Cache
@@ -43,6 +44,10 @@ func (c Cache) String() string {
 // Start use a time.Ticker to cycle flushing data.
 // Can maual to do this
 func (c *Cache) Start() {
+	if c.IsClosed {
+		return
+	}
+
 	tick := time.NewTicker(time.Duration(c.FlushInterval) * time.Millisecond)
 	for {
 		select {
@@ -67,6 +72,10 @@ func (c *Cache) Flush() ([]byte, int) {
 	c.Mux.Lock()
 	defer c.Mux.Unlock()
 
+	if c.IsClosed {
+		return []byte{}, 0
+	}
+
 	result := make([]byte, 0)
 	for index := 0; index < c.Size; index++ {
 		result = append(result, c.Data[index])
@@ -82,6 +91,10 @@ func (c *Cache) Add(b []byte) error {
 	c.Mux.Lock()
 	defer c.Mux.Unlock()
 
+	if c.IsClosed {
+		return fmt.Errorf("Can't use closed Cache")
+	}
+
 	addNumber := addtionSize
 	if c.Capacity < c.Size+addtionSize {
 		addNumber = c.Capacity - c.Size
@@ -96,5 +109,12 @@ func (c *Cache) Add(b []byte) error {
 
 // Close ReceiveChan
 func (c *Cache) Close() {
+	if c.IsClosed {
+		return
+	}
+	c.Mux.Lock()
+	defer c.Mux.Unlock()
+
 	close(c.Quit)
+	c.IsClosed = true
 }
